@@ -1,0 +1,20 @@
+{
+  "name": "ai-open-day-signup-demo",
+  "version": "0.3.0",
+  "private": true,
+  "description": "AI 应用教学开放日报名系统 · 统一工程入口（发布门控：lint / test / build）",
+  "scripts": {
+    "lint": "eslint .",
+    "test": "node --test server/test/",
+    "build": "node scripts/build.js",
+    "stress": "node scripts/stress/runner.js",
+    "start": "node server/server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "autocannon": "^8.0.0",
+    "eslint": "^9.10.0"
+  }
+}
