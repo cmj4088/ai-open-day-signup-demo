@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI 应用教学开放日 · 报名名单管理</title>
+  <!-- 全局样式：校园深蓝主题 -->
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+  <!-- 顶栏：标题 + 副标题 -->
+  <header class="site-header">
+    <div class="container">
+      <h1>AI 应用教学开放日 · 报名名单管理</h1>
+      <p>这里可以查看全部报名名单，还能按身份、场次和关键字快速找人～</p>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="card">
+      <h2 class="page-title">报名名单</h2>
+
+      <!-- 统计条：展示当前筛选后的记录条数 -->
+      <div class="stat-bar" id="stat-bar">共 0 条报名</div>
+
+      <!-- 筛选区：身份 / 场次 / 关键字 + 重置，三项可组合 -->
+      <div class="filters">
+        <div class="form-group">
+          <label class="form-label" for="filter-role">身份</label>
+          <select class="form-control" id="filter-role">
+            <option value="">全部身份</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="filter-session">场次</label>
+          <select class="form-control" id="filter-session">
+            <option value="">全部场次</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="filter-keyword">关键字</label>
+          <input class="form-control" id="filter-keyword" type="text" placeholder="姓名或手机号关键字">
+        </div>
+
+        <div class="form-group">
+          <button class="btn btn-ghost" id="btn-reset" type="button">重置</button>
+        </div>
+
+        <div class="form-group">
+          <button class="btn btn-accent" id="btn-export" type="button">导出名单</button>
+        </div>
+      </div>
+
+      <!-- 导出提示：点击导出后展示，几秒后自动隐藏 -->
+      <div class="notice notice-info hidden" id="export-notice">
+        已按当前筛选条件开始下载 CSV，请查看浏览器下载目录
+      </div>
+
+      <!-- 名单表格：列顺序固定 -->
+      <table class="table">
+        <thead>
+          <tr>
+            <th>报名时间</th>
+            <th>姓名</th>
+            <th>身份</th>
+            <th>院系</th>
+            <th>手机号</th>
+            <th>参加场次</th>
+          </tr>
+        </thead>
+        <tbody id="table-body"></tbody>
+      </table>
+
+      <!-- 空状态提示：无符合条件的记录时展示 -->
+      <div class="notice notice-info hidden" id="empty-notice">暂无报名记录哦</div>
+    </section>
+  </main>
+
+  <!-- 页脚说明 -->
+  <footer class="site-footer">
+    「AI 应用教学开放日」报名名单管理端 · 无登录、独立入口，名单数据来自服务器数据库。
+  </footer>
+
+  <!-- 依赖顺序：先数据层 store.js，再管理端 admin.js（经典 script，非 ES module） -->
+  <script src="assets/js/store.js"></script>
+  <script src="assets/js/admin.js"></script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+# 依赖与构建产物
+node_modules/
+
+# 运行时数据（SQLite 数据库与启动备份）
+data/
+
+# 日志
+*.log
+npm-debug.log*
+
+# 编辑器 / 系统
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

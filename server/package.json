@@ -1,0 +1,19 @@
+{
+  "name": "ai-open-day-signup-server",
+  "version": "0.2.0",
+  "private": true,
+  "description": "AI 应用教学开放日报名系统 · 后端服务（Express + SQLite）",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.3.0",
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "express-rate-limit": "^7.4.0"
+  }
+}

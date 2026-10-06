@@ -1,0 +1,361 @@
+/* =========================================================
+ * 全局样式 · 校园深蓝主题
+ * AI 应用教学开放日报名系统（静态 HTML Demo）
+ * 说明：变量名与类名被 user.html / admin.html 直接依赖，不得改名
+ * ========================================================= */
+
+/* 设计令牌：后续两端页面统一引用这些变量 */
+:root {
+  --brand: #1E3A8A;
+  --brand-light: #2F4CB3;
+  --accent: #0EA5E9;
+  --bg: #F5F7FB;
+  --card: #FFFFFF;
+  --text: #1F2937;
+  --muted: #6B7280;
+  --border: #E5E7EB;
+  --danger: #DC2626;
+  --success: #16A34A;
+  --radius: 12px;
+  --shadow: 0 2px 10px rgba(30, 58, 138, .08);
+}
+
+/* ---------- 基础重置 ---------- */
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+  font-size: 15px;
+  line-height: 1.65;
+  color: var(--text);
+  background: var(--bg);
+}
+
+a { color: var(--brand-light); text-decoration: none; }
+a:hover { color: var(--accent); }
+
+/* ---------- 布局 ---------- */
+
+/* 内容容器：最大宽 1100px 居中 */
+.container {
+  width: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px 20px;
+}
+
+/* 顶栏：深蓝渐变 + 白色标题与副标题 */
+.site-header {
+  background: linear-gradient(135deg, var(--brand) 0%, var(--brand-light) 100%);
+  color: #FFFFFF;
+  padding: 28px 20px;
+  box-shadow: var(--shadow);
+}
+.site-header h1 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  color: #FFFFFF;
+  letter-spacing: .5px;
+}
+.site-header p {
+  margin: 6px 0 0;
+  font-size: 14px;
+  color: rgba(255, 255, 255, .82);
+}
+
+/* 页脚：灰色小字 */
+.site-footer {
+  margin-top: 32px;
+  padding: 20px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--muted);
+  border-top: 1px solid var(--border);
+}
+
+/* 卡片：白底、圆角、轻阴影、内边距 */
+.card {
+  background: var(--card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 24px;
+  margin-top: 20px;
+}
+/* 相邻卡片之间保持统一间距 */
+.card + .card { margin-top: 20px; }
+
+/* ---------- 文本 ---------- */
+
+/* 页面主标题（卡片内） */
+.page-title {
+  margin: 0 0 16px;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--brand);
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--border);
+}
+
+/* 区块小标题 */
+.section-title {
+  margin: 18px 0 10px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--brand);
+}
+
+/* 次要灰色文字 */
+.muted {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* ---------- 表单 ---------- */
+
+/* 每个字段一行 */
+.form-group { margin-bottom: 18px; }
+
+.form-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* 必填星号：红色，追加在标签文本之后 */
+.required::after {
+  content: " *";
+  color: var(--danger);
+  font-weight: 700;
+}
+
+/* 输入框 / 下拉框统一风格 */
+.form-control {
+  display: block;
+  width: 100%;
+  padding: 10px 12px;
+  font-size: 15px;
+  font-family: inherit;
+  color: var(--text);
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.form-control:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, .15);
+}
+.form-control::placeholder { color: var(--muted); }
+
+/* 字段错误提示：红色中文，显示在字段下方，默认隐藏，加 .show 才显示 */
+.form-error {
+  display: none;
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--danger);
+}
+.form-error.show { display: block; }
+
+/* ---------- 按钮 ---------- */
+
+/* 基础按钮 */
+.btn {
+  display: inline-block;
+  padding: 10px 18px;
+  font-size: 15px;
+  font-family: inherit;
+  font-weight: 600;
+  line-height: 1.4;
+  text-align: center;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color .15s ease, border-color .15s ease, color .15s ease, box-shadow .15s ease;
+}
+.btn:disabled { opacity: .6; cursor: not-allowed; }
+
+/* 深蓝实心主按钮 */
+.btn-primary {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: #FFFFFF;
+}
+.btn-primary:hover:not(:disabled) {
+  background: var(--brand-light);
+  border-color: var(--brand-light);
+}
+
+/* 青色实心强调按钮 */
+.btn-accent {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #FFFFFF;
+}
+.btn-accent:hover:not(:disabled) {
+  background: #0B8FC9;
+  border-color: #0B8FC9;
+}
+
+/* 描边透明底按钮 */
+.btn-ghost {
+  background: transparent;
+  border-color: var(--brand);
+  color: var(--brand);
+}
+.btn-ghost:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(14, 165, 233, .06);
+}
+
+/* 占满整行宽度 */
+.btn-block {
+  display: block;
+  width: 100%;
+}
+
+/* ---------- 表格 ---------- */
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--card);
+  font-size: 14px;
+}
+.table thead th {
+  background: var(--brand);
+  color: #FFFFFF;
+  font-weight: 600;
+  text-align: left;
+  padding: 10px 12px;
+  white-space: nowrap;
+}
+.table tbody td {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+/* 斑马纹 */
+.table tbody tr:nth-child(even) { background: #F9FAFD; }
+.table tbody tr:hover { background: rgba(14, 165, 233, .07); }
+
+/* ---------- 管理端 ---------- */
+
+/* 筛选区：横向排列，可换行 */
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+.filters .form-group { margin-bottom: 0; }
+
+/* 统计条：深蓝浅底圆角 */
+.stat-bar {
+  display: inline-block;
+  padding: 8px 16px;
+  margin-bottom: 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--brand);
+  background: rgba(30, 58, 138, .08);
+  border-radius: 999px;
+}
+
+/* ---------- 提示条 ---------- */
+
+.notice {
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 14px;
+  border-left: 4px solid var(--brand);
+  background: var(--bg);
+  color: var(--text);
+  margin: 12px 0;
+}
+.notice-success {
+  border-left-color: var(--success);
+  background: rgba(22, 163, 74, .1);
+  color: var(--success);
+}
+.notice-error {
+  border-left-color: var(--danger);
+  background: rgba(220, 38, 38, .1);
+  color: var(--danger);
+}
+.notice-info {
+  border-left-color: var(--accent);
+  background: rgba(14, 165, 233, .1);
+  color: #0B7285;
+}
+
+/* 小圆角标签：场次 / 身份 */
+.badge {
+  display: inline-block;
+  padding: 2px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.6;
+  color: var(--brand);
+  background: rgba(30, 58, 138, .1);
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+/* ---------- 视图切换 ---------- */
+
+/* 视图容器默认隐藏，加 .active 才展示 */
+.view { display: none; }
+.view.active { display: block; }
+
+/* 强制隐藏工具类 */
+.hidden { display: none !important; }
+
+/* ---------- 查询结果卡片 ---------- */
+
+.result-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 18px 20px;
+  margin-top: 16px;
+}
+/* 结果中的一行：左标签右值 */
+.result-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px dashed var(--border);
+  font-size: 14px;
+}
+.result-row:last-child { border-bottom: none; }
+.result-row .result-label {
+  color: var(--muted);
+  flex: 0 0 auto;
+}
+.result-row .result-value {
+  color: var(--text);
+  font-weight: 600;
+  text-align: right;
+  word-break: break-all;
+}
+
+/* ---------- 响应式（<=640px） ---------- */
+@media (max-width: 640px) {
+  .container { padding: 16px 12px; }
+  .card { padding: 18px 16px; }
+  /* 筛选区纵向堆叠 */
+  .filters { flex-direction: column; align-items: stretch; }
+  .filters .form-group { width: 100%; }
+  /* 表格允许横向滚动 */
+  .table { display: block; overflow-x: auto; white-space: nowrap; }
+}
