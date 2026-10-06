@@ -58,15 +58,22 @@ ai-open-day-signup-demo/
 │       ├── store.js                       # API 客户端（封装 fetch）
 │       ├── user.js                        # 用户端逻辑
 │       └── admin.js                       # 管理端逻辑
-├── server/                                # 后端服务（Express + SQLite）
+├── server/                                # 后端服务（Express + SQLite，按层拆分）
 │   ├── package.json
-│   ├── config.js                          # 字典、错误码、备份份数等常量
-│   ├── db.js                              # SQLite 连接、建表、启动备份
-│   ├── regno.js                           # 报名编号生成
-│   ├── server.js                          # 应用入口（CORS / 限流 / 日志 / 错误处理）
-│   └── routes/
-│       ├── registrations.js               # 报名四接口
-│       └── sessions.js                    # 场次字典
+│   ├── config.js                          # 字典、错误码、开关、路径、版本等集中配置
+│   ├── server.js                          # 进程入口（监听 / 优雅退出）
+│   ├── app.js                             # 应用装配（中间件、路由、静态托管、错误处理）
+│   ├── db/index.js                        # SQLite 连接加固（WAL / busy_timeout）、建表、启动备份
+│   ├── lib/                               # 纯函数层：response / validate / csv / datetime / regno
+│   ├── repositories/                      # 全部 SQL，预处理语句按 SQL 文本缓存
+│   ├── services/                          # 业务编排：校验 → 查重 → 事务插入
+│   ├── hooks/                             # 关键事件 Hook：报名突发保护（1003 + 冷却 + 结构化日志）
+│   ├── routes/                            # 仅 HTTP 编排（registrations / sessions）
+│   └── test/                              # 自动化测试（node:test，47 例）
+├── scripts/                               # 工程脚本
+│   ├── build.js                           # 无产物构建校验（语法 + HTML 死链 + 发布清单）
+│   └── stress/                            # 压力测试（autocannon 场景 S1–S10）
+├── eslint.config.js                       # ESLint flat config
 ├── data/                                  # 运行时数据（git 忽略）
 │   ├── app.db                             # SQLite 数据文件
 │   └── backups/                           # 启动备份，保留最近 7 份
@@ -84,11 +91,46 @@ ai-open-day-signup-demo/
 |---|---|---|
 | POST | `/api/registrations` | 提交报名（name, role?, department?, phone, session） |
 | GET | `/api/registrations/lookup?phone=` | 按手机号查询，未命中 `data=null` |
-| GET | `/api/registrations?role&session&keyword` | 名单列表（三条件 AND） |
-| GET | `/api/registrations/export?role&session&keyword` | 导出 CSV（UTF-8 BOM） |
+| GET | `/api/registrations?role&session&keyword&limit&offset` | 名单列表（三条件 AND；分页参数可选，都不传时返回全量） |
+| GET | `/api/registrations/export?role&session&keyword` | 导出 CSV（UTF-8 BOM + CRLF，流式写出） |
 | GET | `/api/sessions` | 场次字典 |
+| GET | `/healthz` | 健康检查（含 DB 可写探测；不入 `/api`、不受限流） |
 
-错误码：`1001` 参数校验失败 / `1002` 手机号重复 / `5000` 服务器内部错误。
+错误码：`1001` 参数校验失败 / `1002` 手机号重复 / `1003` 报名突发保护触发（冷却中，503）/ `5000` 服务器内部错误。
+
+## 开发与发布门控
+
+仓库根提供统一工程入口，**发布前必须三条全绿**：
+
+```bash
+npm install          # 安装 devDependencies（eslint + autocannon）
+npm run lint         # ESLint flat config 静态检查
+npm test             # node:test 自动化测试（server/test/，47 例）
+npm run build        # 无产物构建校验：全量 node --check + HTML 本地资源死链 + 发布清单
+```
+
+> 说明：本项目**不打包、无 dist 产物**，`npm run build` 的职责是「发布前体检」而非打包。
+> 需要 Node **≥ 20**（`engines` 已固定）。
+
+## 压力测试
+
+压测脚本位于 `scripts/stress/`，用 [autocannon](https://github.com/mcollina/autocannon) 按场景编号 S1–S10 执行，
+结果 JSON 落盘到 `scripts/stress/results/`（已在 `.gitignore` 中忽略）。
+
+```bash
+# 1. 造数据（1k / 10k / 50k 三档）
+node scripts/stress/seed.js
+
+# 2. 指向被测服务（默认 http://127.0.0.1:3100）后跑场景
+SUT_URL=http://10.220.109.114:3100 node scripts/stress/runner.js --label baseline
+
+# 3. 只跑单个场景
+node scripts/stress/runner.js --only S1 --label baseline
+```
+
+压测时服务端建议设置 `RATE_DISABLED=1`（关闭限流）与 `LOG_REQUESTS=0`（关闭请求日志），
+否则 429 与同步写 stdout 会截断、淹没结论。详细场景定义与前后对比结论见
+[basic_code_information_archive/模块说明-压测脚本.md](basic_code_information_archive/模块说明-压测脚本.md)。
 
 ## 数据说明
 

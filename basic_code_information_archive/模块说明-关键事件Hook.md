@@ -26,8 +26,10 @@ server/hooks/
 | 触发条件 | 在途并发提交数 **> 阈值**（默认 100） |
 | 触发动作 | 进入冷却（默认 60s）；触发该次的请求本身也被拒绝 |
 | 冷却期行为 | 新的提交一律拦截，返回 `code=1003` / HTTP 503，**零写库** |
-| 恢复条件 | 冷却到期后自动恢复受理，并输出一行恢复日志 |
+| 恢复条件 | 冷却到期后**惰性恢复**：由下一个到达的请求在 `tryAcquire` 内结算并写一行恢复日志（**不使用定时器**，避免持有事件循环句柄） |
 | 默认状态 | **开启** |
+| 冷却期拒绝的返回 | `{ allowed: false, reason: 'cooldown', retryAfterMs }`；越界当次为 `reason: 'tripped'` |
+| 计数归还 | 放行路径**必须**在 `finally` 中调 `release()`，保证异常路径下在途计数不泄漏 |
 
 ## 四、契约（新增，不改既有）
 
@@ -50,16 +52,29 @@ server/hooks/
 
 ## 六、结构化日志格式（D14）
 
-单行 JSON，字段固定：
+单行 JSON，字段固定（**以下为实测实现，不是规划草案**）：
 
 ```json
-{"event":"signup_burst_guard","action":"trip","at":"<ISO>","inFlight":101,"threshold":100,"cooldownMs":60000,"cooldownUntil":"<ISO>","rejected":0}
-{"event":"signup_burst_guard","action":"recover","at":"<ISO>","inFlight":12,"threshold":100,"rejected":184}
+{"event":"signup_burst_guard","action":"trip","ts":"<ISO>","inFlight":101,"threshold":100,"cooldownMs":60000}
+{"event":"signup_burst_guard","action":"recover","ts":"<ISO>","cooldownMs":60000}
 ```
 
-- `action=trip`：触发突发保护并进入冷却。
-- `action=recover`：冷却到期恢复受理，并带上冷却期内被拦截的请求数 `rejected`。
+| 字段 | trip | recover | 说明 |
+|---|---|---|---|
+| `event` | ✓ | ✓ | 固定为 `signup_burst_guard` |
+| `action` | `trip` | `recover` | 触发 / 恢复 |
+| `ts` | ✓ | ✓ | 事件发生的 ISO 时间（取自注入时钟，便于单测断言） |
+| `inFlight` | ✓ | —— | 触发瞬间观测到的在途并发数（**已含触发本次**，即 `threshold + 1`） |
+| `threshold` | ✓ | —— | 当前生效阈值 |
+| `cooldownMs` | ✓ | ✓ | 冷却时长 |
+
+- **恰好一条**：`trip` 只在「越界那一刻」写一条（连续越界的后续请求走冷却分支，不再写日志，避免刷屏）；
+  `recover` 只在冷却真正到期的那一次惰性结算写一条。
 - 日志**只写 stdout**（D20），不落文件，不引入日志轮转。
+- 冷却期内被拦截的请求数**不单独计数**：本 Hook 是保护动作，不做流量统计；
+  需要拦截量时请查压测脚本结果 JSON（非 2xx 计数）与 `snapshot()`。
+- 日志出口可注入（`createSignupBurstGuard({ log })`），默认实现为 `console.log(JSON.stringify(event))`；
+  测试用收集器替换即可断言「恰好一条日志」。
 
 ## 七、可测试性
 
