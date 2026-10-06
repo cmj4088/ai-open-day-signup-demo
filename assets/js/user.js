@@ -3,6 +3,8 @@
  * AI 应用教学开放日报名系统（静态 HTML Demo）
  * 职责：表单渲染与校验、提交报名、三视图切换、按手机号查询
  * 约束：经典 script（非 ES module），全部数据读写走 window.Store
+ * 变更：v0.3（R11）仅做健壮性修补（成功码但缺回执数据时留在当前页提示），
+ *       表单结构、校验文案与视图切换行为保持不变（Q3 边界）
  * ========================================================= */
 (function (window, document) {
   'use strict';
@@ -221,6 +223,13 @@
         } else {
           showError(errorPhone, result.message || '提交失败，请稍后重试');
         }
+        inputPhone.focus();
+        return;
+      }
+
+      // 健壮性兜底（R11）：成功码但缺回执数据属异常响应，留在当前页提示而不是抛错中断
+      if (!result.data) {
+        showError(errorPhone, '提交结果异常，请稍后重试');
         inputPhone.focus();
         return;
       }

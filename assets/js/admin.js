@@ -1,9 +1,11 @@
 /* =========================================================
- * 管理端 admin.js（v0.2）
+ * 管理端 admin.js（v0.3）
  * AI 应用教学开放日报名名单管理
  * 职责：渲染筛选控件、按筛选条件调后端取名单、渲染表格、导出 CSV（真实下载）
  * 约束：经典 script（非 ES module），数据读写一律经由 window.Store（API 客户端）
- * 变更：v0.1 直接读 localStorage 且导出仅提示，v0.2 起筛选走服务端、导出真实下载
+ * 变更：v0.1 直接读 localStorage 且导出仅提示，v0.2 起筛选走服务端、导出真实下载，
+ *       v0.3（R11）仅做健壮性修补：关键字输入防抖 + 响应非数组兜底；
+ *       表格结构、筛选控件与页面文案保持不变（Q3 边界）
  * ========================================================= */
 (function (window, document) {
   'use strict';
@@ -25,6 +27,11 @@
 
   // 请求序号：筛选频繁触发时，仅采纳最后一次请求的结果，避免旧响应覆盖新结果
   var requestSeq = 0;
+
+  // 关键字输入防抖延时（毫秒）与定时器句柄（R11 健壮性修补）：
+  // 逐字符触发整表查询会造成请求风暴，防抖后只在停止输入时查一次
+  var KEYWORD_DEBOUNCE_MS = 250;
+  var keywordTimer = null;
 
   // -------- DOM 引用缓存 --------
   var elStatBar = document.getElementById('stat-bar');
@@ -146,11 +153,13 @@
     elStatBar.textContent = '加载中…';
     hideEmpty();
 
-    Store.list(filters).then(function (records) {
+    Store.list(filters).then(function (data) {
       // 仅采纳最后一次请求的结果，避免筛选快速切换时旧响应覆盖新结果
       if (seq !== requestSeq) {
         return;
       }
+      // 健壮性兜底（R11）：正常必为数组；响应异常时按空名单渲染，避免整页抛错
+      var records = Array.isArray(data) ? data : [];
       elStatBar.textContent = '共 ' + records.length + ' 条报名';
       elTableBody.innerHTML = records.map(buildRowHtml).join('');
       if (records.length === 0) {
@@ -205,11 +214,22 @@
     showNotice('已按当前筛选条件开始下载 CSV，请查看浏览器下载目录');
   }
 
+  // 关键字输入：防抖后再查询（下拉选择仍是立即查询，交互手感不变）
+  function handleKeywordInput() {
+    if (keywordTimer) {
+      window.clearTimeout(keywordTimer);
+    }
+    keywordTimer = window.setTimeout(function () {
+      keywordTimer = null;
+      render();
+    }, KEYWORD_DEBOUNCE_MS);
+  }
+
   // 绑定事件：筛选控件实时联动 + 重置 + 导出
   function bindEvents() {
     elRole.addEventListener('change', render);
     elSession.addEventListener('change', render);
-    elKeyword.addEventListener('input', render);
+    elKeyword.addEventListener('input', handleKeywordInput);
     elReset.addEventListener('click', handleReset);
     elExport.addEventListener('click', handleExport);
   }

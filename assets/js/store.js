@@ -1,10 +1,12 @@
 /* =========================================================
- * API 客户端 store.js（v0.2）
+ * API 客户端 store.js（v0.3）
  * AI 应用教学开放日报名系统
  * 职责：统一封装对后端 REST API 的 fetch 调用，
  *       向上层（用户端 / 管理端）暴露 list / getByPhone / add / exportUrl 与字典
  * 约束：经典 script（非 ES module），通过 window.Store 暴露
- * 变更：v0.1 封装 localStorage，v0.2 起全部改走后端 API（同源相对路径）
+ * 变更：v0.1 封装 localStorage，v0.2 起全部改走后端 API（同源相对路径），
+ *       v0.3（R10）起所有请求统一带 15s 超时并做统一错误分类；
+ *       add 的 network / duplicate / invalid 三种 reason 语义保持不变（Q4 契约要求）
  * ========================================================= */
 
 (function (window) {
@@ -15,6 +17,13 @@
 
   // 统一错误文案，网络异常时展示
   var NETWORK_ERROR_MESSAGE = '网络异常，请稍后重试';
+
+  // 请求超时（R10）：后端僵死或网络黑洞时 fetch 可能长时间挂起，
+  // 页面会一直停在「提交中…」，故统一设 15s 上限
+  var TIMEOUT_MS = 15000;
+
+  // 超时文案：与网络异常区分开，便于用户判断是「服务慢」还是「网断了」
+  var TIMEOUT_ERROR_MESSAGE = '请求超时，请稍后重试';
 
   // 场次字典兜底值：页面渲染前先有内容，接口返回后会被覆盖（保证首屏不空白）
   var SESSIONS = [
@@ -48,13 +57,48 @@
     return parts.length > 0 ? '?' + parts.join('&') : '';
   }
 
-  // 统一 GET：解析 { code, message, data }；HTTP 层异常抛出 Error(message)
-  function getJson(path) {
-    return fetch(API_BASE + path).then(function (res) {
+  // 统一请求入口（R10）：所有 fetch 都经此，保证「超时 + JSON 解析 + 错误分类」只有一处实现
+  // 入参：path 为相对路径，init 为 fetch 配置（可省略）
+  // 出参：Promise<响应体对象>；超时 / 网络异常 / 非 JSON 一律 reject Error(中文文案)
+  function request(path, init) {
+    var options = init || {};
+    var controller = null;
+    var timer = null;
+
+    // AbortController 在旧浏览器可能缺失：缺失时退化为「无超时」而不是直接报错
+    if (typeof window.AbortController === 'function') {
+      controller = new window.AbortController();
+      options.signal = controller.signal;
+      timer = window.setTimeout(function () {
+        controller.abort();
+      }, TIMEOUT_MS);
+    }
+
+    // 无论成功还是失败都要清掉定时器，否则会残留定时器句柄
+    function settle() {
+      if (timer !== null) {
+        window.clearTimeout(timer);
+        timer = null;
+      }
+    }
+
+    return fetch(API_BASE + path, options).then(function (res) {
+      settle();
+      // 服务端非 JSON 响应（如反向代理返回 502 页面）也归为网络异常
       return res.json().catch(function () {
         throw new Error(NETWORK_ERROR_MESSAGE);
       });
-    }).then(function (body) {
+    }, function (err) {
+      settle();
+      // 统一错误分类：abort 即超时，其余（断网 / DNS / 连不上）为网络异常
+      var aborted = err && err.name === 'AbortError';
+      throw new Error(aborted ? TIMEOUT_ERROR_MESSAGE : NETWORK_ERROR_MESSAGE);
+    });
+  }
+
+  // 统一 GET：解析 { code, message, data }；HTTP 层异常抛出 Error(message)
+  function getJson(path) {
+    return request(path).then(function (body) {
       if (!body || body.code !== 0) {
         throw new Error((body && body.message) || NETWORK_ERROR_MESSAGE);
       }
@@ -84,28 +128,31 @@
     return getJson('/api/registrations/lookup?phone=' + encodeURIComponent(phone));
   }
 
+  // 业务错误码 → 前端分类（语义与 v0.2 完全一致：1002 = 手机号重复，其余非 0 = 校验/业务失败）
+  // 说明：后端新增的 1003（报名突发保护）不新增前端分类，复用 invalid 并透传服务端文案，
+  //       使对外契约始终只有 network / duplicate / invalid 三种 reason（Q4）
+  function classifyCode(code) {
+    return code === 1002 ? 'duplicate' : 'invalid';
+  }
+
   // 提交报名：resolve { ok, data?, reason?, message? }，永不 reject（便于页面统一处理）
   function add(record) {
-    return fetch(API_BASE + '/api/registrations', {
+    return request('/api/registrations', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(record)
-    }).then(function (res) {
-      return res.json().then(function (body) {
-        return { ok: body.code === 0, data: body.data, reason: body.code, message: body.message };
-      });
-    }).then(function (result) {
-      // 1002 = 手机号重复，其余非 0 视为校验失败
-      if (!result.ok) {
-        return {
-          ok: false,
-          reason: result.reason === 1002 ? 'duplicate' : 'invalid',
-          message: result.message || '提交失败，请检查填写内容'
-        };
+    }).then(function (body) {
+      if (body && body.code === 0) {
+        return { ok: true, data: body.data };
       }
-      return { ok: true, data: result.data };
-    }).catch(function () {
-      return { ok: false, reason: 'network', message: NETWORK_ERROR_MESSAGE };
+      return {
+        ok: false,
+        reason: classifyCode(body && body.code),
+        message: (body && body.message) || '提交失败，请检查填写内容'
+      };
+    }).catch(function (err) {
+      // 超时与断网统一归为 network；文案区分「超时」与「网络异常」，便于用户判断
+      return { ok: false, reason: 'network', message: (err && err.message) || NETWORK_ERROR_MESSAGE };
     });
   }
 
