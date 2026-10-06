@@ -28,11 +28,19 @@ app.set('trust proxy', 1);
 // 关闭 X-Powered-By，减少指纹暴露
 app.disable('x-powered-by');
 
-// ---------- 请求日志 ----------
+// ---------- 请求日志（R6：开关与慢请求阈值均可配） ----------
+// 说明：console.log 是同步写 fd，高并发下会成为可观开销，压测时用 LOG_REQUESTS=0 关闭
 app.use(function (req, res, next) {
+  if (!config.LOG_REQUESTS) {
+    return next();
+  }
   const startedAt = Date.now();
   res.on('finish', function () {
     const cost = Date.now() - startedAt;
+    // LOG_SLOW_MS > 0 时只记慢请求，减少高频日志噪音
+    if (config.LOG_SLOW_MS > 0 && cost < config.LOG_SLOW_MS) {
+      return;
+    }
     console.log('[' + new Date().toISOString() + '] ' + req.method + ' ' + req.originalUrl +
       ' -> ' + res.statusCode + ' (' + cost + 'ms)');
   });
@@ -45,22 +53,49 @@ app.use(cors({ origin: config.CORS_ORIGIN }));
 // ---------- 请求体解析（体积限制，防大包） ----------
 app.use(express.json({ limit: config.JSON_LIMIT }));
 
-// ---------- 限流（管理端无鉴权，限流尤为必要） ----------
-const apiLimiter = rateLimit({
-  windowMs: config.RATE_WINDOW_MS,
-  limit: config.RATE_MAX,
-  standardHeaders: true,
-  legacyHeaders: false,
-  // 超限时返回统一响应体，保持契约一致
-  handler: function (req, res) {
-    res.status(429).json({
-      code: config.CODES.SERVER_ERROR,
-      message: '请求过于频繁，请稍后再试',
-      data: null
-    });
+// ---------- 限流（R5：参数与开关均可配；管理端无鉴权，限流尤为必要） ----------
+// 说明：RATE_DISABLED=1 时不挂载限流中间件（压测专用，避免 429 截断结论）
+if (config.RATE_DISABLED) {
+  console.log('[server] 限流已通过 RATE_DISABLED=1 关闭（仅供压测使用）');
+} else {
+  const apiLimiter = rateLimit({
+    windowMs: config.RATE_WINDOW_MS,
+    limit: config.RATE_MAX,
+    standardHeaders: true,
+    legacyHeaders: false,
+    // 超限时返回统一响应体，保持契约一致
+    handler: function (req, res) {
+      res.status(429).json({
+        code: config.CODES.SERVER_ERROR,
+        message: '请求过于频繁，请稍后再试',
+        data: null
+      });
+    }
+  });
+  app.use('/api', apiLimiter);
+}
+
+// ---------- 健康检查（R7：纯新增，不入 /api 前缀故不受限流影响） ----------
+// 返回 { status, uptime, version }，并做一次数据库「可写」探测
+// 探测方式：BEGIN IMMEDIATE 会立即申请写锁，成功即可证明库可写，且不改动任何数据
+function probeDbWritable() {
+  try {
+    db.exec('BEGIN IMMEDIATE; COMMIT;');
+    return true;
+  } catch {
+    // 任何异常都视为不可写（既包括锁冲突，也包括库损坏）
+    return false;
   }
+}
+
+app.get('/healthz', function (req, res) {
+  const writable = probeDbWritable();
+  return res.status(writable ? 200 : 503).json({
+    status: writable ? 'ok' : 'degraded',
+    uptime: Math.round(process.uptime()),
+    version: config.APP_VERSION
+  });
 });
-app.use('/api', apiLimiter);
 
 // ---------- API 路由 ----------
 app.use('/api/registrations', registrationsRouter.createRouter(db));
