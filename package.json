@@ -5,13 +5,13 @@
   "description": "AI 应用教学开放日报名系统 · 统一工程入口（发布门控：lint / test / build）",
   "scripts": {
     "lint": "eslint .",
-    "test": "node --test server/test/",
+    "test": "node --test \"server/test/*.test.js\"",
     "build": "node scripts/build.js",
     "stress": "node scripts/stress/runner.js",
     "start": "node server/server.js"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   },
   "devDependencies": {
     "autocannon": "^8.0.0",
